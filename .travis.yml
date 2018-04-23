@@ -3,9 +3,26 @@ language: python
 services: docker
 python: '3.6'
 
-install:
-  - pip install -r requirements-dev.txt
-
-script:
-  - flake8
-  - ./test.sh
+jobs:
+  include:
+    - stage: test
+      install:
+        - pip install -r requirements-dev.txt
+      script:
+      - flake8
+      - ./test.sh
+    - stage: docker
+      env:
+        - IMAGE_NAME=praekeltfoundation/gem-molo-unicore-redirect
+        - REGISTRY_USER=praekeltorgdeploy
+        - secure: "I46hKl5uFHIJKNJOSmoQkoG71XlhLH9xPOjNE4RIqPyyBZw1mQwGavDJpnSIEu0YgvXA2xmdwQg+otE7OkTETDEs3TMOWJBDexu/LeG0ubvQNPQFqSdHMJ6fVo6FNmEhTKDu+Y+61ZyDU42JvOtkoDW1CZh+0dTYMA1h7Pr0QX/eeF4ZTzaGHDva7O/KHHj5Tb0EdXKyefp6mu1gThE0o2dHNdA2ygZCN1qGUPxpLts+OmS6NDiaC8MTBlsZMr6xLcode+qxcS/qIJsQQIpAhX5jiiixOWjjefBRIJ95RKhEneuq4Nwv2WsddBwAiqEF10io0m8+ibqAdgo9mA+ChakoUsZsSwwzq/lvgLuzyUfPT01RDz7+z5igZQ406oLoiMs67xsbgfMj0RhROYThpgxTYG+gyWQeR82nhU+7ViwtdmmUlUUepOqM/l2g0K+yV6J8+jVhGXfG8uIXOOkPOi2O3pFixzh9GbVbjdj8s+v6YVVKXXfthc+WHUponph8auFEBfJASHzACkyGoV0UUL8Pw1cu61M5lZpMoY//piH5uF27oVq9JJHlbodhn+kcX3h1vVaJKZ7VAbBNH5g69F7Y8s7lK2oEO2IJHp9vLW2LTAR7doGKvUydoxKnSijoe0K27wzjSXQxdyEMpUW2s2QsTHcbBjeSzA3O2XCGr+k="
+      script:
+        - docker build --pull --tag "$IMAGE_NAME" .
+      before_deploy:
+        - pip install docker-ci-deploy==0.3.0
+        - echo -n $REGISTRY_PASS | docker login -u "$REGISTRY_USER" --password-stdin
+      deploy:
+        - provider: script
+          script: dcd --version "$(git rev-parse --short HEAD)" --version-latest "$IMAGE_NAME"
+          on:
+            branch: master
